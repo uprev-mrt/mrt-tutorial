@@ -76,27 +76,25 @@ Once you have selected the required modules, click 'Import Submodules'.
 
 You should now have a folder called 'MrT' in your projects directory with the submodules inside of it. 
 
+
+
 Now you need to configure the project to use these submodules. Each platform module should have instructions in its [README](MrT/Platforms/STM32/README.md) document
 
 Here are the instructions from STM32/README.md:
 
-
+> note: right click the project and hit refresh so it sees the new directories
 
 >**To use the STM32 platform, cofigure the following settings:**
 >
 >**Project->Properties->C/C++ General->Path and Symbols**:
->>Under the Symbols tab add a symbol named **MRT_PLATFORM** with the value **MRT_STM32_HAL**<br/>
+>>Under the Symbols tab add a symbol named **MRT_PLATFORM** with the value **MRT_STM32_HAL**
 >Under the Source Location tab click add and select the **Modules** directory under Mr T
+> Add The modules directory to the include list for GCC (and G++ if used)
 >
->**Project->Properties->C/C++ Build->Settings->Includes**:
 >
->> Add The modules directory to the include list for GCC (and G++ if used)
->
->**NOTE**: Sometimes reconfiguring the project with STM32CubeMx will overwrite these changes.
->
->>To test that it is configured Correctly, build the project and look at the output. There should be a message that says "MrT Platform: STM32"
 
-If you see the message when you build, you should be all set to use MrT in this project!
+
+Build the project, you will see a warning about 'MRT_SPI_TRANSFER', this is normal because no spi is configured 
 
 ## 3) Toggle LED <a id="toggle-led" style="font-size:0.4em;" href="#top">back to top</a>
 
@@ -104,7 +102,7 @@ Now we can use the MrT abstraction layer for stm32. We are going to blink the LE
 
 **main.c:26** (in the USER CODE INCLUDES section)
 ```c
-#include "Platforms/mrt_platform" /* This includes will include the stm32 layer based on the MRT_PLATFORM symbol we set*/
+#include "Platforms/Common/mrt_platform" /* This includes will include the stm32 layer based on the MRT_PLATFORM symbol we set*/
 ```
 <br>
 
