@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "Platforms/Common/mrt_platform.h" /* This will include the stm32 layer based on the MRT_PLATFORM symbol we set*/
 
 /* USER CODE END Includes */
 
@@ -104,6 +105,13 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+  	/** STM32 HAL does not have a type for pins, all of its functions use (port,pin). MRT_GPIO() is a macro that wraps them
+  	  * This is so that device drives have a single struct for pins
+  	  */
+  	MRT_GPIO_WRITE(MRT_GPIO(LED_GRN),HIGH);     //set the pin high
+  	MRT_DELAY_MS(1000);                         //wait 1000 ms
+  	MRT_GPIO_WRITE(MRT_GPIO(LED_GRN),LOW);      //set the pin low
+  	MRT_DELAY_MS(1000);                         //wait 1000 ms
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
