@@ -325,7 +325,8 @@ main.c:27 *USER CODE includes section*
 
 main.c:95 *USER CODE 2 section*
 ```c
-   int temperature;
+  uint32_t ticks =0;
+  int temperature;
   int humidity;
   hts221_t hts;                               /* create instance of hts221 device*/
   hts_init_i2c(&hts, &hi2c2);                 /* Initialize it on I2C2 bus*/
@@ -344,19 +345,25 @@ main.c:95 *USER CODE 2 section*
 
 ```
 
-main.c:121 *Replace entire while loop*:
+main.c:122 *Replace entire while loop*:
 ```c
- /* Infinite loop */
+/* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    
+
     /* Every 500 ms see if new data is ready, and read it */
-    if(hts_check_flag(&hts, &hts.mStatus, ( HTS_STATUS_TEMP_READY | HTS_STATUS_HUM_READY )  )) /*wait until both flags are set */
+    MRT_EVERY( 50, ticks)   /* convenience macro for systick timing*/
     {
-      temperature = hts_read_temp(&hts);
-      humidity = hts_read_humidity(&hts);
-    } 
-    MRT_DELAY_MS(500);
+      if(hts_check_flag(&hts, &hts.mStatus, ( HTS_STATUS_TEMP_READY | HTS_STATUS_HUM_READY )  )) /*wait until both flags are set */
+      {
+        temperature = hts_read_temp(&hts);
+        humidity = hts_read_humidity(&hts);
+      } 
+    }
+    ticks++;
+    MRT_DELAY_MS(10);
 
     /* USER CODE END WHILE */
 
@@ -367,7 +374,53 @@ build the project and run it should toggle the led everytime it
 
 ## Create a PolyPacket Service <a id="poly-make" style="font-size:0.4em;" href="#top">back to top</a>
 
+Now That we have a working device driver, lets create a messaging protocol so we can ask the device for data over the com port. 
 
+first we will need to add in some more MrT modules to support polypacket. back out to your projects root directory and open mrt-config again:
 
+```bash
+cd /path/to/project/root
+mrt-config MrT
+```
+
+Select the following modules to import :
+- Utilities/PolyPacket
+- Utilities/JSON
+- Utilities/COBS 
+
+Once they are imported, create a new directory for your service files
+
+```bash
+mkdir MrT/Modules/my_service
+cd MrT/Modules/my_service
+```
+create a copy of the example protocol and rename it: *(yes, there should be a -t for template to match mrt-device.. I plan to change it...)*
+
+```bash
+poly-make -e
+mv sample_protocol.yml my_protocol.yml
+```
+
+now modify the file to match the my_protocol.yml in the doc folder. For a detailed eplanation of the document reference [PolyPacket.wiki/Defining-a-protocol](https://github.com/up-rev/PolyPacket/wiki/Defining-a-Protocol)
+
+Once the descriptor is filled out, generate your service with an application layer:
+
+```bash
+poly-make -i my_protocol.yml -a -o .
+```
+>*Add "-d . " to create an ICD*
+
+This will generate 4 files: 
+- **my_protocolService.h** - header for service, you should never need to edit this
+- **my_protocolService.c** - source for service, you should never need to edit this
+- **app_my_protocol.h** - header for application layer
+- **app_my_protocol.c** - source for application layer, this is where you will fill out packet handlers
+
+First include the service:
+
+main.c:28:
+```c
+#include "my_service/app_my_protocol.h"
+```
 
 ## Project Start <a id="poly-packet" style="font-size:0.4em;" href="#top">back to top</a>

@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include "Platforms/Common/mrt_platform.h" /* This will include the stm32 layer based on the MRT_PLATFORM symbol we set*/
 #include "Devices/hts221/hts221.h"
+#include "my_service/app_my_protocol.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -114,6 +115,11 @@ int main(void)
 
   /* OR we could use the configuration we created with: HTS_LOAD_CONFIG_AUTO_1HZ(&hts) */
 
+  app_my_protocol_init(&huart1); /* initialize the app layer and give it a uart interface */
+  
+
+  UART_MASK_COMPUTATION(&huart1);									/* Sets Uart1's internal data mask based on STMCUBE configuration*/
+  SET_BIT(huart1.Instance->CR1, USART_CR1_PEIE | USART_CR1_RXNEIE); /* Enable the interrupts for STM32 UART receive */
 
   /* USER CODE END 2 */
  
@@ -134,9 +140,9 @@ int main(void)
         humidity = hts_read_humidity(&hts);
       } 
     }
+    app_my_protocol_process(); /* process our service*/
     ticks++;
     MRT_DELAY_MS(10);
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -285,7 +291,6 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_GRN_GPIO_Port, LED_GRN_Pin, GPIO_PIN_RESET);

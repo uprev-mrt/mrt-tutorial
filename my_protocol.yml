@@ -1,0 +1,46 @@
+---
+name: my_protocol
+prefix: mp  #this defines the prefix used for functions and types in the code. This allows multiple protocols to be used in a project
+desc: This is a protocol for talking getting data from the hts221 sensor on the IOT board
+
+###########################################################################################################
+#                                   FIELDS                                                                #
+###########################################################################################################
+
+fields:
+
+  - deviceName: { type: string*32 , desc: Name of device }  # field is a string with a maximum length of 32
+  - temp:       { type: int , desc: Temperature in 100ths of a degree. i.e. 4500 = 45.00 deg C}
+  - humidity:   { type: int , desc: Humidity in 100ths of a %. i.e. 5650 = 56.5%Rh }
+
+
+###########################################################################################################
+#                                   Packets                                                               #
+###########################################################################################################
+packets:
+
+  - getData: { response: sensorData, desc: requests sensor data from device }
+  - whoAreYou: { response: myNameIs, desc: Asks the device what it's name is.. }
+
+  - myNameIs:
+      desc: packet to tell someone your name
+      fields: [deviceName]
+  
+  - setName:
+      desc: packet to set the new name of a device
+      fields: [deviceName]
+
+    #it can also be formatted like this:
+  - sensorData:                              
+      desc: Message containing sensor data
+      fields: [temp, humidity]
+
+###########################################################################################################
+#                                   Structs                                                               #
+###########################################################################################################
+
+structs:
+
+  - Device:
+      desc: struct for holding data on device
+      fields: [temp, humidity, deviceName]

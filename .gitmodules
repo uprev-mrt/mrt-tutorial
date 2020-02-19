@@ -7,3 +7,12 @@
 [submodule "MrT/Modules/Platforms/STM32"]
 	path = MrT/Modules/Platforms/STM32
 	url = git@bitbucket.org:uprev/platform-stm32.git
+[submodule "MrT/Modules/Utilities/PolyPacket"]
+	path = MrT/Modules/Utilities/PolyPacket
+	url = https://github.com/uprev-mrt/libPolyPacket.git
+[submodule "MrT/Modules/Utilities/JSON"]
+	path = MrT/Modules/Utilities/JSON
+	url = https://github.com/uprev-mrt/libJSON.git
+[submodule "MrT/Modules/Utilities/COBS"]
+	path = MrT/Modules/Utilities/COBS
+	url = https://github.com/up-rev/libCOBS.git
