@@ -24,7 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Platforms/Common/mrt_platform.h" /* This will include the stm32 layer based on the MRT_PLATFORM symbol we set*/
-
+#include "Devices/hts221/hts221.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,6 +96,24 @@ int main(void)
   MX_I2C2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  int temperature;
+  int humidity;
+  uint32_t ticks =0;
+  hts221_t hts;                               /* create instance of hts221 device*/
+  hts_init_i2c(&hts, &hi2c2);                 /* Initialize it on I2C2 bus*/
+
+  if(hts_test(&hts) == MRT_STATUS_OK)         /* Turn on LED if device passes test */
+  {
+      MRT_GPIO_WRITE(MRT_GPIO(LED_GRN),HIGH );
+  }
+
+  /* Set flags/fields for start up and 1hz data*/
+
+  hts_set_flag(&hts, &hts.mCtrl1, HTS_CTRL1_PD);  /* set PD flag of CTRL 1 register, to turn on device*/
+  hts_set_ctrl1_odr(&hts, HTS_CTRL1_ODR_1HZ);     /* Set ODR field in CTRL1 Register to 1Hz*/
+
+  /* OR we could use the configuration we created with: HTS_LOAD_CONFIG_AUTO_1HZ(&hts) */
+
 
   /* USER CODE END 2 */
  
@@ -105,13 +123,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-  	/** STM32 HAL does not have a type for pins, all of its functions use (port,pin). MRT_GPIO() is a macro that wraps them
-  	  * This is so that device drives have a single struct for pins
-  	  */
-  	MRT_GPIO_WRITE(MRT_GPIO(LED_GRN),HIGH);     //set the pin high
-  	MRT_DELAY_MS(1000);                         //wait 1000 ms
-  	MRT_GPIO_WRITE(MRT_GPIO(LED_GRN),LOW);      //set the pin low
-  	MRT_DELAY_MS(1000);                         //wait 1000 ms
+    
+
+    /* Every 500 ms see if new data is ready, and read it */
+    MRT_EVERY( 50, ticks)   /* convenience macro for systick timing*/
+    {
+      if(hts_check_flag(&hts, &hts.mStatus, ( HTS_STATUS_TEMP_READY | HTS_STATUS_HUM_READY )  )) /*wait until both flags are set */
+      {
+        temperature = hts_read_temp(&hts);
+        humidity = hts_read_humidity(&hts);
+      } 
+    }
+    ticks++;
+    MRT_DELAY_MS(10);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
