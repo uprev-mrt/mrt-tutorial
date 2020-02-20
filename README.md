@@ -9,10 +9,11 @@ This is a guide for incorporating MrT modules into a project. This guide will be
 4) [Create Device Driver using mrt-device tool](#mrt-device)
 5) [Create Poly Packet service](#poly-make)
 6) [Customize Our Service](#poly-packet)
+7) [Interact with poly-packet CLI](#poly-cli)
 
 
 
-## Project Start <a id="start" style="font-size:0.4em;" href="#top">back to top</a>
+# 0) Project Start <a id="start" style="font-size:0.4em;" href="#top">back to top</a>
 At head of the mast branch is the project start. An STM32 project has already been created to target the STM32L4 ( Their IOT node dev board)
 
 - Uart1: 115200 baud
@@ -620,7 +621,7 @@ app_my_protocol.c:63
 HandlerStatus_e mp_GetData_handler(mp_packet_t* mp_getData, mp_packet_t* mp_sensorData)
 {
 
-  mp_packet_copy(&mp_sensorData, &myDevice); /* copy fields from 'myDevice' into the response packet*/
+  mp_packet_copy(mp_sensorData, &myDevice); /* copy fields from 'myDevice' into the response packet*/
 
   return PACKET_HANDLED;  /* Make sure to change this to PACKET_HANDLED*/
 }
@@ -634,7 +635,7 @@ HandlerStatus_e mp_GetData_handler(mp_packet_t* mp_getData, mp_packet_t* mp_sens
 HandlerStatus_e mp_WhoAreYou_handler(mp_packet_t* mp_whoAreYou, mp_packet_t* mp_myNameIs)
 {
   
-  mp_packet_copy(&mp_myNameIs, &myDevice);  /* copy fields from 'myDevice' into the response packet*/
+  mp_packet_copy(mp_myNameIs, &myDevice);  /* copy fields from 'myDevice' into the response packet*/
 
   return PACKET_HANDLED;   /* Make sure to change this to PACKET_HANDLED*/
 }
@@ -647,7 +648,7 @@ HandlerStatus_e mp_WhoAreYou_handler(mp_packet_t* mp_whoAreYou, mp_packet_t* mp_
 HandlerStatus_e mp_SetName_handler(mp_packet_t* mp_setName)
 {
   
-  mp_packet_copy(&myDevice, &mp_setName); /* Copy fields from incoming packet to 'myDevice' */
+  mp_packet_copy(&myDevice, mp_setName); /* Copy fields from incoming packet to 'myDevice' */
 
   return PACKET_HANDLED; /* Make sure to change this to PACKET_HANDLED*/
 }
@@ -660,7 +661,88 @@ make it available to our main.c
 app_my_protocol.h:11
 ```c
 extern mp_struct_t myDevice;
+``` 
+
+Then add set the values in our main loop:
+
+main.c:129
+```c
+ /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    
+
+    /* Every 500 ms see if new data is ready, and read it */
+    MRT_EVERY( 100, ticks)   /* convenience macro for systick timing*/
+    {
+      if(hts_check_flag(&hts, &hts.mStatus, ( HTS_STATUS_TEMP_READY | HTS_STATUS_HUM_READY )  )) /*wait until both flags are set */
+      {
+        temperature = hts_read_temp(&hts);
+        humidity = hts_read_humidity(&hts);
+
+        mp_setTemp(&myDevice, temperature);
+        mp_setHumidity(&myDevice, humidity);
+
+      } 
+    }
+    app_my_protocol_process(); /* process our service*/
+    ticks++;
+    MRT_DELAY_MS(10);
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+  }
 ```
+
+build!
+
+# 7) Interact with poly-packet CLI <a id="poly-cli" style="font-size:0.4em;" href="#top">back to top</a>
+
+Now that our service is working we can interact with it using the poly-packet cli
+
+```bash
+poly-packet -i my_protocol.yml -c connect serial:/dev/ttyS3:115200
+```
+> -c lets you pass a command on start-up, I use it as a convinient way to connect 
+
+Once you are in the CLI, you can send some packets 
+
+```bash
+whoAreYou
+getData
+setName deviceName: Jason Berger
+whoAreYou
+```
+
+produced the following output:
+
+```bash
+______     _      ______          _        _   
+| ___ \   | |     | ___ \        | |      | |  
+| |_/ /__ | |_   _| |_/ /_ _  ___| | _____| |_ 
+|  __/ _ \| | | | |  __/ _` |/ __| |/ / _ \ __|
+| | | (_) | | |_| | | | (_| | (__|   <  __/ |_ 
+\_|  \___/|_|\__, \_|  \__,_|\___|_|\_\___|\__|    [my_protocol protocol]
+              __/ |                            
+             |___/                             
+
+ Port Opened : /dev/ttyS3
+
+ --> { "packetType" : "whoAreYou"}
+ <-- { "packetType" : "myNameIs", "deviceName" : "Jerry"}
+
+ --> { "packetType" : "getData"}
+ <-- { "packetType" : "sensorData", "temp" : 2865, "humidity" : 4939}
+
+ --> { "packetType" : "setName", "deviceName" : "Jason Berger"}
+ <-- { "packetType" : "Ack"}
+
+ --> { "packetType" : "whoAreYou"}
+ <-- { "packetType" : "myNameIs", "deviceName" : "Jason Berger"}
+```
+
+
 
 
 
