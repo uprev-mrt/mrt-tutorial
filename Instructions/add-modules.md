@@ -1,4 +1,4 @@
-# 2) Add MrT Modules
+# Add MrT Modules
 [index](../README.md)
 
 
@@ -10,7 +10,7 @@ mrt-config MrT
 ```
 This will open the mrt-config gui:
 
-<img src="doc/mrtconfig.png">
+<img src="mrtconfig.png">
 
 The tool will open up a treeview of the available submodules. Select the modules you would like to import. clicking on a module will show its README file in the view panel. This should show if other modules are required *(I am working on automating dependencies)*
 
@@ -42,3 +42,5 @@ Here are the instructions from STM32/README.md:
 
 
 Build the project, you will see a warning about 'MRT_SPI_TRANSFER', this is normal because no spi is configured 
+
+[Next Step](toggle-led.md)

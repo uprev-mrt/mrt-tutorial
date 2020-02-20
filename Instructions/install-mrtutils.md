@@ -1,4 +1,4 @@
-# 1) Installing mrtutils 
+# Installing mrtutils 
 [index](../README.md)
 
 MrT modules are just individual git repositories that get included in your project as [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules). You could simply add them as submodules manually, but this would require looking up the urls, and making sure the path to each module is correct, because some modules reference others. 
