@@ -3,7 +3,7 @@
   *@brief generated code for my_protocol packet service
   *@author make_protocol.py
   *@date 02/20/20
-  *@hash A3571767
+  *@hash C7E5198B
   */
 
 #pragma once
@@ -20,7 +20,7 @@ extern "C" {
 }
 #endif
 
-#define MP_SERVICE_HASH 0xA3571767
+#define MP_SERVICE_HASH 0xC7E5198B
 
 /*******************************************************************************
   Enums

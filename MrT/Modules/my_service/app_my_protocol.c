@@ -11,8 +11,8 @@
 
 #include "app_my_protocol.h"
 mrt_uart_handle_t ifac0;
-static uint8_t iface0_rx_buf[512];
-static char printBuf[512];
+
+mp_struct_t myDevice; /* create device struct for storing/serving our data */
 
 static inline HandlerStatus_e iface0_write(uint8_t* data, int len)
 {
@@ -22,23 +22,6 @@ static inline HandlerStatus_e iface0_write(uint8_t* data, int len)
   return PACKET_SENT;
 }
 
-
-static inline void iface0_read()
-{
-  int len = 16;
-  /* Place code for reading bytes from interface 0 here */
-  //TODO read bytes from interface to iface0_rx_buf
-  if(MRT_UART_RX(ifac0, iface0_rx_buf, 16, 100) == HAL_TIMEOUT  )
-  {
-    len -= ifac0->RxXferCount;
-  }
-
-
-  if(len > 0)
-  {
-	  mp_service_feed(0,iface0_rx_buf, len);
-  }
-}
 
 /*******************************************************************************
   App Init/end
@@ -50,6 +33,9 @@ void app_my_protocol_init(mrt_uart_handle_t uart_handle)
 
   //initialize service
   mp_service_init(1,16);
+
+  mp_struct_build(&myDevice, MP_STRUCT_DEVICE); /* builds the generic poly_struct into a Device struct */
+  mp_setDeviceName(&myDevice, "Jerry");         /* set the 'Name' field of the device struct */
 
   mp_service_register_bytes_tx(0, iface0_write);
 
@@ -80,83 +66,41 @@ void app_my_protocol_process()
 /**
   *@brief Handler for receiving getData packets
   *@param getData incoming getData packet
+  *@param sensorData sensorData packet to respond with
   *@return handling mp_status
   */
-HandlerStatus_e mp_GetData_handler(mp_packet_t* mp_getData)
+HandlerStatus_e mp_GetData_handler(mp_packet_t* mp_getData, mp_packet_t* mp_sensorData)
 {
-  /*  Get Required Fields in packet */
 
+  mp_packet_copy(mp_sensorData, &myDevice); /* copy fields from 'myDevice' into the response packet*/
 
-
-
-
-  return PACKET_NOT_HANDLED;
+  return PACKET_HANDLED;  /* Make sure to change this to PACKET_HANDLED*/
 }
 
 /**
   *@brief Handler for receiving whoAreYou packets
   *@param whoAreYou incoming whoAreYou packet
+  *@param myNameIs myNameIs packet to respond with
   *@return handling mp_status
   */
-HandlerStatus_e mp_WhoAreYou_handler(mp_packet_t* mp_whoAreYou)
+HandlerStatus_e mp_WhoAreYou_handler(mp_packet_t* mp_whoAreYou, mp_packet_t* mp_myNameIs)
 {
-  /*  Get Required Fields in packet */
+  
+  mp_packet_copy(mp_myNameIs, &myDevice);  /* copy fields from 'myDevice' into the response packet*/
 
-
-
-
-
-  return PACKET_NOT_HANDLED;
+  return PACKET_HANDLED;   /* Make sure to change this to PACKET_HANDLED*/
 }
 
 /**
-  *@brief Handler for receiving myNameIs packets
-  *@param myNameIs incoming myNameIs packet
+  *@brief Handler for receiving setName packets
+  *@param setName incoming setName packet
   *@return handling mp_status
   */
-HandlerStatus_e mp_MyNameIs_handler(mp_packet_t* mp_myNameIs)
+HandlerStatus_e mp_SetName_handler(mp_packet_t* mp_setName)
 {
-  /*  Get Required Fields in packet */
-  char deviceName[1];  //Name of device
+  
+  mp_packet_copy(&myDevice, mp_setName); /* Copy fields from incoming packet to 'myDevice' */
 
-  mp_getDeviceName(mp_myNameIs, deviceName);
-
-
-
-
-  return PACKET_NOT_HANDLED;
+  return PACKET_HANDLED; /* Make sure to change this to PACKET_HANDLED*/
 }
 
-/**
-  *@brief Handler for receiving sensorData packets
-  *@param sensorData incoming sensorData packet
-  *@return handling mp_status
-  */
-HandlerStatus_e mp_SensorData_handler(mp_packet_t* mp_sensorData)
-{
-  /*  Get Required Fields in packet */
-  int temp;  //Temperature in 100ths of a degree. i.e. 4500 = 45.00 deg C
-  int humidity;  //Humidity in 100ths of a %. i.e. 5650 = 56.5%Rh
-
-  temp = mp_getTemp(mp_sensorData);
-  humidity = mp_getHumidity(mp_sensorData);
-
-
-
-
-  return PACKET_NOT_HANDLED;
-}
-
-
-/**
-  *@brief catch-all handler for any packet not handled by its default handler
-  *@param metaPacket ptr to mp_packet_t containing packet
-  *@param mp_response ptr to response
-  *@return handling mp_status
-  */
-HandlerStatus_e mp_default_handler( mp_packet_t * mp_packet, mp_packet_t * mp_response)
-{
-
-
-  return PACKET_NOT_HANDLED;
-}

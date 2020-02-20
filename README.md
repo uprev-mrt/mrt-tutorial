@@ -8,7 +8,8 @@ This is a guide for incorporating MrT modules into a project. This guide will be
 3) [Toggle LED using MrT Abstraction Layer ](#toggle-led)
 4) [Create Device Driver using mrt-device tool](#mrt-device)
 5) [Create Poly Packet service](#poly-make)
-6) [Talk to Service using poly-packet CLI](#poly-packet)
+6) [Customize Our Service](#poly-packet)
+
 
 
 ## Project Start <a id="start" style="font-size:0.4em;" href="#top">back to top</a>
@@ -20,7 +21,7 @@ At head of the mast branch is the project start. An STM32 project has already be
 
 The setup for this project is not in the scope of this tutorial, but usine STM32CUBE is pretty well documented online 
 
-## 1) Installing mrtutils <a id="mrt-config" style="font-size:0.4em;" href="#top">back to top</a>
+# 1) Installing mrtutils <a id="mrt-config" style="font-size:0.4em;" href="#top">back to top</a>
 
 MrT modules are just individual git repositories that get included in your project as [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules). You could simply add them as submodules manually, but this would require looking up the urls, and making sure the path to each module is correct, because some modules reference others. 
 
@@ -53,7 +54,7 @@ mrt-config -h
 You should see the help output of mrt-config
 
 
-## 2) Add MrT Modules <a id="mrt-config" style="font-size:0.4em;" href="#top">back to top</a>
+# 2) Add MrT Modules <a id="mrt-config" style="font-size:0.4em;" href="#top">back to top</a>
 
 Once you have installed mrtutils, adding modules is very simple. just run mrt-config and tell it where you want to put the modules *(It will create the directory)*
 
@@ -96,7 +97,7 @@ Here are the instructions from STM32/README.md:
 
 Build the project, you will see a warning about 'MRT_SPI_TRANSFER', this is normal because no spi is configured 
 
-## 3) Toggle LED <a id="toggle-led" style="font-size:0.4em;" href="#top">back to top</a>
+# 3) Toggle LED <a id="toggle-led" style="font-size:0.4em;" href="#top">back to top</a>
 
 Now we can use the MrT abstraction layer for stm32. We are going to blink the LED on the board just as a basic example. Add the following code snippets:
 
@@ -122,7 +123,7 @@ MRT_DELAY_MS(1000);                         //wait 1000 ms
 Now build and run the project, the green LED on the board should blink!
 
 
-## 4) Create a device driver <a id="mrt-device" style="font-size:0.4em;" href="#top">back to top</a>
+# 4) Create a device driver <a id="mrt-device" style="font-size:0.4em;" href="#top">back to top</a>
 
 Obviously an abstraction layer to toggle a gpio is a bit overkill. But the point of this is to write device drivers that can run on any platform. So now we are going to create a device driver for the HTS221 temperature and humidity sensor on the board. 
 
@@ -372,7 +373,7 @@ main.c:122 *Replace entire while loop*:
 ```
 build the project and run it should toggle the led everytime it 
 
-## Create a PolyPacket Service <a id="poly-make" style="font-size:0.4em;" href="#top">back to top</a>
+# 5) Create a PolyPacket Service <a id="poly-make" style="font-size:0.4em;" href="#top">back to top</a>
 
 Now That we have a working device driver, lets create a messaging protocol so we can ask the device for data over the com port. 
 
@@ -388,27 +389,24 @@ Select the following modules to import :
 - Utilities/JSON
 - Utilities/COBS 
 
-Once they are imported, create a new directory for your service files
+Once they are imported, create your protocol template:
 
 ```bash
-mkdir MrT/Modules/my_service
-cd MrT/Modules/my_service
+poly-make -t my_protocol
 ```
-create a copy of the example protocol and rename it: *(yes, there should be a -t for template to match mrt-device.. I plan to change it...)*
 
-```bash
-poly-make -e
-mv sample_protocol.yml my_protocol.yml
-```
+There should now be a file named ```my_protocol.yml``` in the root of your project. You can keep this wherever you want, but I find it handy to have it in the root of the project when debugging. 
+
 
 now modify the file to match the my_protocol.yml in the doc folder. For a detailed eplanation of the document reference [PolyPacket.wiki/Defining-a-protocol](https://github.com/up-rev/PolyPacket/wiki/Defining-a-Protocol)
 
-Once the descriptor is filled out, generate your service with an application layer:
+Once the descriptor is filled out, create a directory for your service, and then generate your service with an application layer:
 
 ```bash
-poly-make -i my_protocol.yml -a -o .
+mkdir MrT/Modules/my_service
+poly-make -i my_protocol.yml -a -o MrT/Modules/my_service/
 ```
->*Add "-d . " to create an ICD*
+>*Add "-d doc " to create an ICD in the doc folder*
 
 This will generate 4 files: 
 - **my_protocolService.h** - header for service, you should never need to edit this
@@ -416,11 +414,253 @@ This will generate 4 files:
 - **app_my_protocol.h** - header for application layer
 - **app_my_protocol.c** - source for application layer, this is where you will fill out packet handlers
 
-First include the service:
+**First include the service:**
 
 main.c:28:
 ```c
 #include "my_service/app_my_protocol.h"
 ```
 
-## Project Start <a id="poly-packet" style="font-size:0.4em;" href="#top">back to top</a>
+**Next intialize the app layer**
+
+main.c:118:
+```c
+  /* OR we could use the configuration we created with: HTS_LOAD_CONFIG_AUTO_1HZ(&hts) */
+
+  app_my_protocol_init(&huart1); /* initialize the app layer and give it a uart interface */
+
+  /* For the UART RX, we are going to use some low level tricks for the stm32, because their HAL layer is not great at receiving
+   * unkown lengths of data. This will set us up with an interrupt everytime a new byte comes in. its just cleaner and less hassle
+   */
+  UART_MASK_COMPUTATION(&huart1);									/* Sets Uart1's internal data mask based on STMCUBE configuration*/
+  SET_BIT(huart1.Instance->CR1, USART_CR1_PEIE | USART_CR1_RXNEIE); /* Enable the interrupts for STM32 UART receive */
+
+  /* USER CODE END 2 */
+```
+
+**Then add a call to process our service in the main loop**
+
+main.c:118:
+```c
+/* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    
+
+    /* Every 500 ms see if new data is ready, and read it */
+    MRT_EVERY( 100, ticks)   /* convenience macro for systick timing*/
+    {
+      if(hts_check_flag(&hts, &hts.mStatus, ( HTS_STATUS_TEMP_READY | HTS_STATUS_HUM_READY )  )) /*wait until both flags are set */
+      {
+        temperature = hts_read_temp(&hts);
+        humidity = hts_read_humidity(&hts);
+      } 
+    }
+    app_my_protocol_process(); /* process our service*/
+    ticks++;
+    MRT_DELAY_MS(10);
+    
+
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+  }
+```
+<br>
+
+**Now lets use the uart interrupt to feed our service**
+
+stm32l4xx_it.c:26
+```c
+#include "my_service/app_my_protocol.h"
+```
+
+stm32l4xx_it.c:201
+```c
+/**
+  * @brief This function handles USART1 global interrupt.
+  */
+void USART1_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART1_IRQn 0 */
+
+    /* If RX-Not-Empty flag is set, then we have a byte of data */
+    if(huart1.Instance->ISR & UART_FLAG_RXNE)
+    {
+      uint8_t data = (uint8_t)(huart1.Instance->RDR & (uint8_t)huart1.Mask); /* Mask Off Data */
+      mp_service_feed(0, &data ,1); /* feed the byte to our service */
+    }
+
+  /* USER CODE END USART1_IRQn 0 */
+  HAL_UART_IRQHandler(&huart1);
+  /* USER CODE BEGIN USART1_IRQn 1 */
+
+  /* USER CODE END USART1_IRQn 1 */
+}
+```
+
+**Since we our using the interrupt we can disable the uart_read in our application layer:**
+
+**app_my_protocol.c:66** - *comment out iface0_read()*
+```c
+void app_my_protocol_process()
+{
+  /* read in new data from iface 0*/
+  // iface0_read();
+
+  /* process the actual service */
+  mp_service_process();
+
+}
+```
+
+
+<br>
+
+
+Before we add anything else, lets test our service. Find the com port that the device is on in device manager. in my case it is COM3
+
+>for WSL, COM ports are mapped to /dev/ttyS\<Port Number>
+
+**open the poly-packet interpretter:**
+```bash
+poly-packet -i my_protocol.yml 
+```
+
+**inside of poly-packet** *connect over serial with a baud of 115200*
+```bash
+connect serial:/dev/ttyS3:115200
+ping
+```
+> note: every protocol is built with a ping and ack packet
+
+You should see your 'Ping packet go out, and an ack returned'
+
+```bash
+______     _      ______          _        _   
+| ___ \   | |     | ___ \        | |      | |  
+| |_/ /__ | |_   _| |_/ /_ _  ___| | _____| |_ 
+|  __/ _ \| | | | |  __/ _` |/ __| |/ / _ \ __|
+| | | (_) | | |_| | | | (_| | (__|   <  __/ |_ 
+\_|  \___/|_|\__, \_|  \__,_|\___|_|\_\___|\__|    [my_protocol protocol]
+              __/ |                            
+             |___/                             
+
+ Port Opened : /dev/ttyS3
+
+ --> { "packetType" : "Ping", "icd" : 3174876862}
+ <-- { "packetType" : "Ack"}
+```
+
+>tip: inside poly-packet, you can press tab to see available packets to send
+
+
+
+# 6) Customize the service <a id="poly-packet" style="font-size:0.4em;" href="#top">back to top</a>
+Now that we have our service working, lets make it do something useful. When we created the protocol description, we set up a poly_struct named 'Device'. We are going to use this to store and serve information about the device.
+
+
+First we will make changes to our application layer, we will add our struct, and clean up some un-used sections while we are there 
+
+**app_my_protocol.c:8**
+```bash
+/***********************************************************
+        Application Layer
+***********************************************************/
+
+#include "app_my_protocol.h"
+mrt_uart_handle_t ifac0;
+
+mp_struct_t myDevice; /* create device struct for storing/serving our data */
+
+static inline HandlerStatus_e iface0_write(uint8_t* data, int len)
+{
+  /* Place code for writing bytes on interface 0 here */
+  MRT_UART_TX(ifac0, data, len, 10);
+
+  return PACKET_SENT;
+}
+
+
+/*******************************************************************************
+  App Init/end
+*******************************************************************************/
+void app_my_protocol_init(mrt_uart_handle_t uart_handle)
+{
+  /* Set ifac0 to uart handle, this can use any peripheral, but uart is the most common case */
+  ifac0 = uart_handle; //set interface to uart handle
+
+  //initialize service
+  mp_service_init(1,16);
+
+  mp_struct_build(&myDevice, MP_STRUCT_DEVICE); /* builds the generic poly_struct into a Device struct */
+  mp_setDeviceName(&myDevice, "Jerry");         /* set the 'Name' field of the device struct */
+
+  mp_service_register_bytes_tx(0, iface0_write);
+
+}
+```
+
+**Next we can fill out our packet handlers.** 
+
+The only packets we need to handle are: getdata, whoAreYou, and setName. the rest of the handlers can be deleted. (They are define weakly in the service layer)
+
+app_my_protocol.c:63
+```c
+/*******************************************************************************
+  Packet handlers
+*******************************************************************************/
+/**
+  *@brief Handler for receiving getData packets
+  *@param getData incoming getData packet
+  *@param sensorData sensorData packet to respond with
+  *@return handling mp_status
+  */
+HandlerStatus_e mp_GetData_handler(mp_packet_t* mp_getData, mp_packet_t* mp_sensorData)
+{
+
+  mp_packet_copy(&mp_sensorData, &myDevice); /* copy fields from 'myDevice' into the response packet*/
+
+  return PACKET_HANDLED;  /* Make sure to change this to PACKET_HANDLED*/
+}
+
+/**
+  *@brief Handler for receiving whoAreYou packets
+  *@param whoAreYou incoming whoAreYou packet
+  *@param myNameIs myNameIs packet to respond with
+  *@return handling mp_status
+  */
+HandlerStatus_e mp_WhoAreYou_handler(mp_packet_t* mp_whoAreYou, mp_packet_t* mp_myNameIs)
+{
+  
+  mp_packet_copy(&mp_myNameIs, &myDevice);  /* copy fields from 'myDevice' into the response packet*/
+
+  return PACKET_HANDLED;   /* Make sure to change this to PACKET_HANDLED*/
+}
+
+/**
+  *@brief Handler for receiving setName packets
+  *@param setName incoming setName packet
+  *@return handling mp_status
+  */
+HandlerStatus_e mp_SetName_handler(mp_packet_t* mp_setName)
+{
+  
+  mp_packet_copy(&myDevice, &mp_setName); /* Copy fields from incoming packet to 'myDevice' */
+
+  return PACKET_HANDLED; /* Make sure to change this to PACKET_HANDLED*/
+}
+```
+
+** Now ww will use the sensor data from our device driver to set the fields of 'myDevice'
+
+make it available to our main.c
+
+app_my_protocol.h:11
+```c
+extern mp_struct_t myDevice;
+```
+
+
+

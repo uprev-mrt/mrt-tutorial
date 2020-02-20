@@ -138,6 +138,9 @@ int main(void)
       {
         temperature = hts_read_temp(&hts);
         humidity = hts_read_humidity(&hts);
+
+        mp_setTemp(&myDevice, temperature);
+        mp_setHumidity(&myDevice, humidity);
       } 
     }
     app_my_protocol_process(); /* process our service*/

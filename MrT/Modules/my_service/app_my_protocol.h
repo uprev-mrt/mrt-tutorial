@@ -8,6 +8,8 @@
 #include "my_protocolService.h"
 #include "Platforms/Common/mrt_platform.h"
 
+extern mp_struct_t myDevice;
+
 
 /**
   *@brief Initialize the packet service
