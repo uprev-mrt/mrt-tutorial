@@ -1,6 +1,6 @@
 # MrT Tutorial <a id="top"></a>
 
-This is a guide for incorporating MrT modules into a project. This guide will be broken up into stages. There is a 'reference' branch where each stage has a tag to provide an example. The stages are:
+This is a guide for incorporating MrT modules into a project. The guides walks through the full implementation of a project using MrT, a generated device driver, and a custom messaging protocol.  This guide will be broken up into stages. There is a 'reference' branch with Tags showing the end of each stage:
 
 0) [Project start](#start)
 1) [Installing mrtutils ](#mrtutils)
@@ -14,7 +14,7 @@ This is a guide for incorporating MrT modules into a project. This guide will be
 
 
 # 0) Project Start <a id="start" style="font-size:0.4em;" href="#top">back to top</a>
-At head of the mast branch is the project start. An STM32 project has already been created to target the STM32L4 ( Their IOT node dev board)
+At head of the master branch is the project start. An STM32 project has already been created to target the STM32L4 ( Their IOT node dev board)
 
 - Uart1: 115200 baud
 - I2C2 
@@ -37,13 +37,13 @@ pip3 install mrtutils
 
 **WSL:**
 In my experince python setup in windows is very finnicky. If you are developing in windows I **highly** recommend using WSL which is a linux subsytem. 
-1) [install wsl](https://docs.microsoft.com/en-us/windows/wsl/install-win10) - I use ubuntu
+1) [install wsl](https://docs.microsoft.com/en-us/windows/wsl/install-win10) I use the ubuntu image
 2) [install Xming](https://sourceforge.net/projects/xming/) - this allows you to run graphical applications from WSL which will let you use the mrt-config gui
 3) run Xming
 4) open a wsl terminal and enter the following commands
     - ``` export DISPLAY=:0```
     - ``` sudo apt update```
-    - ``` sudo apt install python3 python3-pip```
+    - ``` sudo apt install python3 python3-pip python3-pyqt5```
     - ``` pip3 install mrtutils```
 
 
@@ -109,10 +109,10 @@ Now we can use the MrT abstraction layer for stm32. We are going to blink the LE
 <br>
 
 
-**main.c:108** ( before the USER CODE WHILE section)
+**main.c:108** ( in the USER CODE WHILE section)
 ```c
 /** STM32 HAL does not have a type for pins, all of its functions use (port,pin). MRT_GPIO() is a macro that wraps them 
-  * This is so that device drives have a single struct for pins 
+  * This is so that device drivers have a single struct for pins 
   */
 MRT_GPIO_WRITE(MRT_GPIO(LED_GRN),HIGH);     //set the pin high
 MRT_DELAY_MS(1000);                         //wait 1000 ms
@@ -132,7 +132,7 @@ For this we will use the [mrt-device tool](https://github.com/uprev-mrt/mrtutils
 
 This is part of mrtutils, so it is already installed. 
 
-Normally you would create a device driver as submodule, so that it can be re-used as a MrT module, but for the purpose of this tutorial we will just create it in a subdirectory. mrt-device can generate a template to get you started:
+Normally you would create a device driver as a submodule, so that it can be re-used as a MrT module, but for the purpose of this tutorial we will just create it in a subdirectory. mrt-device can generate a template to get you started:
 
 ```bash
 mkdir MrT/Modules/Devices/hts221
@@ -163,7 +163,7 @@ This will create 3 new files:
 >```
 
 
-Now we have a basic driver with access to all of the register/fields in the device. If the temerature and humidity values could be read directly, wed be done.. But they cant. So we just need to add the logic. 
+Now we have a basic driver with access to all of the register/fields in the device. If the temperature and humidity values could be read directly, wed be done.. But they cant. So we just need to add the logic. 
 
 >This particular device has a pretty convoluted calibration table that has to be read to get conversion constants. You can ignore the logic involved, the take away is that there are code blocks in the driver that will **not** be overwritten if you regenerate the driver. It also shows use of the devices macros for reading fields/registers
 
@@ -372,7 +372,7 @@ main.c:122 *Replace entire while loop*:
     /* USER CODE BEGIN 3 */
   }
 ```
-build the project and run it should toggle the led everytime it 
+build the project and run it. The led should turn on to show it passed the device test. If you step through code you will see valid temperature/humidity readings. 
 
 # 5) Create a PolyPacket Service <a id="poly-make" style="font-size:0.4em;" href="#top">back to top</a>
 
@@ -501,7 +501,7 @@ void USART1_IRQHandler(void)
 }
 ```
 
-**Since we our using the interrupt we can disable the uart_read in our application layer:**
+**Since we are using the interrupt we can disable the uart_read in our application layer:**
 
 **app_my_protocol.c:66** - *comment out iface0_read()*
 ```c
@@ -654,7 +654,7 @@ HandlerStatus_e mp_SetName_handler(mp_packet_t* mp_setName)
 }
 ```
 
-** Now ww will use the sensor data from our device driver to set the fields of 'myDevice'
+** Now we will use the sensor data from our device driver to set the fields of 'myDevice'
 
 make it available to our main.c
 
@@ -663,7 +663,7 @@ app_my_protocol.h:11
 extern mp_struct_t myDevice;
 ``` 
 
-Then add set the values in our main loop:
+Then add code to set the values in our main loop:
 
 main.c:129
 ```c
@@ -699,12 +699,12 @@ build!
 
 # 7) Interact with poly-packet CLI <a id="poly-cli" style="font-size:0.4em;" href="#top">back to top</a>
 
-Now that our service is working we can interact with it using the poly-packet cli
+Now that our service is complete, we can interact with it using the poly-packet cli
 
 ```bash
 poly-packet -i my_protocol.yml -c connect serial:/dev/ttyS3:115200
 ```
-> -c lets you pass a command on start-up, I use it as a convinient way to connect 
+> -c lets you pass a command on start-up, I use it as a convenient way to connect 
 
 Once you are in the CLI, you can send some packets 
 
