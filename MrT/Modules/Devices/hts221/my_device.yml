@@ -1,0 +1,112 @@
+---
+name: HTS221
+description: Humidity and Temperature Sensor 
+category: Device
+requires: [RegDevice,Platform]
+datasheet: https://www.st.com/content/ccc/resource/technical/document/datasheet/4d/9a/9c/ad/25/07/42/34/DM00116291.pdf/files/DM00116291.pdf/jcr:content/translations/en.DM00116291.pdf
+mfg: STMicroelectronics
+mfg_pn: HTS221TR
+digikey_pn: 497-15382-1-ND
+
+prefix: HTS
+bus: I2C
+i2c_addr: 0xBE
+ai_mask: 0x80  #some devices require the address to have a bit set to auto-increment the address
+
+###########################################################################################################
+#                                   Registers                                                             #
+###########################################################################################################
+
+registers:
+  - WHO_AM_I:     { addr: 0x0F , type: uint8_t, perm: R, desc:  Id Register, default: 0xBC}                
+  - AV_CONF:      { addr: 0x10 , type: uint8_t, perm: RW, desc: Humidity and temperature resolution mode, default: 0x1b}
+  - CTRL1:        { addr: 0x20 , type: uint8_t, perm: RW, desc: Control register 1, default: 0}
+  - CTRL2:        { addr: 0x21 , type: uint8_t, perm: RW, desc: Control register 2, default: 0}
+  - CTRL3:        { addr: 0x22 , type: uint8_t, perm: RW, desc: Control register 3, default: 0}
+  - STATUS:       { addr: 0x27 , type: uint8_t, perm: R, desc: Status register, default: 0}
+  - HUMIDITY_OUT: { addr: 0x28 , type: int16_t, perm: R, desc: Relative humidity data }
+  - TEMP_OUT:     { addr: 0x2A , type: int16_t, perm: R, desc: Temperature data}
+  
+  - H0_rH_x2:     { addr: 0x30 , type: uint8_t, perm: R, desc: Calibration data}
+  - H1_rH_x2:     { addr: 0x31 , type: uint8_t, perm: R, desc: Calibration data}
+  - T0_DEGC_x8:   { addr: 0x32 , type: uint8_t, perm: R, desc: Calibration data}
+  - T1_DEGC_x8:   { addr: 0x33 , type: uint8_t, perm: R, desc: Calibration data}
+  - T1T0_MSB:     { addr: 0x35 , type: uint8_t, perm: R, desc: Calibration data}
+  - H0_T0_OUT:    { addr: 0x36 , type: int16_t, perm: R, desc: Calibration data}
+  - H1_T0_OUT:    { addr: 0x3A , type: int16_t, perm: R, desc: Calibration data}
+  - T0_OUT:       { addr: 0x3C , type: int16_t, perm: R, desc: Calibration data}
+  - T1_OUT:       { addr: 0x3E , type: int16_t, perm: R, desc: Calibration data}
+
+###########################################################################################################
+#                                   Fields                                                                #
+###########################################################################################################
+
+fields:
+  - STATUS:
+    - TEMP_READY: { mask: 0x01, desc: indicates that a temperature reading is ready }
+    - HUM_READY: { mask: 0x02, desc: indicates that a humidity reading is ready }
+  
+  - AV_CONF:
+    - AVGH: 
+        mask: 0x07
+        desc: Selects the number of Humidity samples to average for data output
+        vals:
+          - !!str 4   : {val: 0b000, desc: 4 samples}  #!!str just tells the yaml parse to tread '4' as a string and not a number
+          - !!str 8   : {val: 0b001, desc: 8 samples}
+          - !!str 16  : {val: 0b010, desc: 16 samples}
+          - !!str 32  : {val: 0b011, desc: 32 samples}
+          - !!str 64  : {val: 0b100, desc: 64 samples}
+          - !!str 128 : {val: 0b101, desc: 128 samples}
+          - !!str 256 : {val: 0b110, desc: 256 samples}
+          - !!str 512 : {val: 0b111, desc: 512 samples}
+    
+    - AVGT:
+        mask: 0x38
+        desc: Selects the number of Temperature samples to average for data output
+        vals:
+          - !!str 2   : {val: 0b000, desc: 2 samples}
+          - !!str 4   : {val: 0b001, desc: 4 samples}
+          - !!str 8   : {val: 0b010, desc: 8 samples}
+          - !!str 16  : {val: 0b011, desc: 16 samples}
+          - !!str 32  : {val: 0b100, desc: 32 samples}
+          - !!str 64  : {val: 0b101, desc: 64 samples}
+          - !!str 128 : {val: 0b110, desc: 128 samples}
+          - !!str 256 : {val: 0b111, desc: 256 samples}
+ 
+      
+
+  - CTRL1:
+    - PD: {mask: 0x80, desc: power down mode}
+    - BDU: {mask: 0x04, desc: Block Data update. Prevents update until LSB of data is read}
+    - ODR:
+        mask: 0x03
+        desc: Selects the Output rate for the sensor data
+        vals:
+          - ONESHOT: { val: 0, desc: readings must be requested}
+          - 1HZ: { val: 1, desc: 1 hz sampling}
+          - 7HZ: { val: 2, desc: 7 hz sampling}
+          - 12_5HZ: { val: 3, desc: 12.5 hz sampling}
+  
+  - CTRL2:
+    - BOOT: {mask: 0x80, desc: Reboot memory content}
+    - HEATER: {mask: 0x02, desc: Enable intenal heating element}
+    - ONESHOT: {mask: 0x01, desc: Start conversion for new data}
+  
+  - TEMP_OUT: 
+    - TEMP_OUT: {mask: 0xFFFF, desc: Current ADC reading for temperature sensor}
+
+  - HUMIDITY_OUT:
+    - HUM_OUT: {mask: 0xFFFF, desc: Current ADC reading for humidity sensor}
+
+###########################################################################################################
+#                                   Configurations                                                        #
+###########################################################################################################
+
+configs:
+  - auto_1hz: 
+      desc: Sets device to update every second
+      registers:
+        - CTRL2: {BOOT: 1, delay: 10} #this device doesnt really need a delay on boot, this just illustrates the options..
+        - CTRL1: { ODR: 1HZ}
+
+
